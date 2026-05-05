@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Machine-readable project social playbook schema.",
+  "project": {
+    "name": "{{PROJECT_NAME}}",
+    "handle": "{{PROJECT_HANDLE}}",
+    "archetype_primary": "{{PRIMARY_ARCHETYPE}}",
+    "archetype_secondary": "{{SECONDARY_ARCHETYPE_OR_NULL}}",
+    "archetype_blend_ratio": "{{BLEND_RATIO_OR_NULL}}",
+    "primary_audience": "{{PRIMARY_AUDIENCE}}",
+    "secondary_audience": "{{SECONDARY_AUDIENCE}}"
+  },
+  "generated_at": "{{ISO_DATE}}",
+  "core_story_angle": "{{CORE_STORY_ANGLE}}",
+  "proof_points": [
+    "{{PROOF_POINT_1}}",
+    "{{PROOF_POINT_2}}",
+    "{{PROOF_POINT_3}}"
+  ],
+  "content_pillars": [
+    {
+      "name": "{{PILLAR_1_NAME}}",
+      "description": "{{PILLAR_1_DESCRIPTION}}",
+      "weekly_frequency": "{{PILLAR_1_FREQUENCY}}",
+      "core_cta": "{{PILLAR_1_CORE_CTA}}",
+      "example_angles": ["{{PILLAR_1_ANGLE_1}}", "{{PILLAR_1_ANGLE_2}}"]
+    },
+    {
+      "name": "{{PILLAR_2_NAME}}",
+      "description": "{{PILLAR_2_DESCRIPTION}}",
+      "weekly_frequency": "{{PILLAR_2_FREQUENCY}}",
+      "core_cta": "{{PILLAR_2_CORE_CTA}}",
+      "example_angles": ["{{PILLAR_2_ANGLE_1}}", "{{PILLAR_2_ANGLE_2}}"]
+    },
+    {
+      "name": "{{PILLAR_3_NAME}}",
+      "description": "{{PILLAR_3_DESCRIPTION}}",
+      "weekly_frequency": "{{PILLAR_3_FREQUENCY}}",
+      "core_cta": "{{PILLAR_3_CORE_CTA}}",
+      "example_angles": ["{{PILLAR_3_ANGLE_1}}", "{{PILLAR_3_ANGLE_2}}"]
+    },
+    {
+      "name": "{{PILLAR_4_NAME}}",
+      "description": "{{PILLAR_4_DESCRIPTION}}",
+      "weekly_frequency": "{{PILLAR_4_FREQUENCY}}",
+      "core_cta": "{{PILLAR_4_CORE_CTA}}",
+      "example_angles": ["{{PILLAR_4_ANGLE_1}}", "{{PILLAR_4_ANGLE_2}}"]
+    }
+  ],
+  "posting_rhythm": {
+    "posts_per_week_target": 0,
+    "mix": {
+      "launch_positioning": "{{MIX_POSITIONING}}",
+      "demo_proof": "{{MIX_DEMO}}",
+      "market_user_problem": "{{MIX_MARKET}}",
+      "replies_quote_tweets": "{{MIX_REPLY}}",
+      "community_events": "{{MIX_COMMUNITY}}"
+    },
+    "best_windows_et": ["{{WINDOW_1}}", "{{WINDOW_2}}"],
+    "week_by_week_emphasis": {
+      "week_1": "{{WEEK_1_EMPHASIS}}",
+      "week_2": "{{WEEK_2_EMPHASIS}}",
+      "week_3": "{{WEEK_3_EMPHASIS}}",
+      "week_4": "{{WEEK_4_EMPHASIS}}"
+    }
+  },
+  "distribution": {
+    "communities": [
+      { "name": "{{COMMUNITY_1}}", "reason": "{{COMMUNITY_1_REASON}}" },
+      { "name": "{{COMMUNITY_2}}", "reason": "{{COMMUNITY_2_REASON}}" },
+      { "name": "{{COMMUNITY_3}}", "reason": "{{COMMUNITY_3_REASON}}" }
+    ],
+    "events": [
+      "{{EVENT_1}}",
+      "{{EVENT_2}}",
+      "{{EVENT_3}}"
+    ],
+    "reply_targets": [
+      {
+        "handle": "{{HANDLE}}",
+        "reason": "{{WHY_THE_ACCOUNT_MATTERS}}"
+      }
+    ],
+    "insertion_tactics": [
+      "{{TACTIC_1}}",
+      "{{TACTIC_2}}",
+      "{{TACTIC_3}}"
+    ]
+  },
+  "example_posts": [
+    {
+      "n": 1,
+      "structure": "{{STRUCTURE_CODE}}",
+      "pillar": "{{PILLAR_TAG}}",
+      "text": "{{POST_TEXT}}",
+      "anti_slop_checked": true
+    }
+  ],
+  "content_calendar_csv_path": "{{POPULATED_CONTENT_CALENDAR_CSV_PATH}}",
+  "next_actions": [
+    "{{ACTION_1}}",
+    "{{ACTION_2}}",
+    "{{ACTION_3}}"
+  ]
+}

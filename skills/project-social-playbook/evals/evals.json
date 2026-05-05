@@ -1,0 +1,27 @@
+{
+  "skill_name": "project-social-playbook",
+  "description": "Topic-1 test cases for the project-social-playbook skill. Each eval checks whether the skill can turn a newly submitted Solana hackathon project into a concrete, project-account launch plan instead of generic content advice.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "infra-workflow-wedge-devtool",
+      "prompt": "We just submitted a Solana debugging tool called TraceDock to a hackathon. It records failed transaction traces and turns them into readable debugging timelines for Anchor teams. Our users are Solana developers and protocol teams. Stack: Rust indexer, parser service, Next.js dashboard. Team background: two infra engineers, both ex-devtools. We have no project X handle history yet. Build a project social playbook for our project account.",
+      "expected_output": "Archetype match should lean Workflow Wedge or Ecosystem Utility. Story angle should center on shrinking debug time for Solana builders, not generic infra claims. Output should include builder communities, demo/proof posts, and actionable first-month cadence.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "consumer-magnet-campus-payments",
+      "prompt": "Our hackathon project is called TapIn. It's a Solana campus payments app that lets student clubs collect dues and issue QR-based event passes without forcing users to understand wallets. Users: university clubs and student event organizers. Stack: React Native, Solana Pay, Supabase. Team background: one consumer PM, one mobile engineer, one community operator. We have a prototype demo and screenshots, but no traction yet. Make a project-account X playbook.",
+      "expected_output": "Archetype match should lean Consumer Magnet. Story angle should emphasize frictionless campus coordination, not chain abstraction buzzwords. Example posts should feel demo-first and user-problem-first. Communities/events should skew consumer and campus-friendly.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "market-narrative-defi-trading",
+      "prompt": "We submitted Velocity to a Solana hackathon. Velocity is a perp trading app built on a new execution layer that routes retail-sized orders toward better fills while showing slippage honestly. Users: active Solana traders who feel existing apps hide execution quality. Stack: Anchor, Rust matching logic, React frontend. Team background optional, but we come from market structure and trading infra. We do have a project account: @velocitytradehq, but it's new. Build us a project social playbook.",
+      "expected_output": "Archetype should lean Market Narrative or Protocol Breakthrough. Story angle should be about execution quality and trader trust. The plan should include market-education threads, demo/proof posts, and relevant trading communities and Spaces.",
+      "files": []
+    }
+  ]
+}
