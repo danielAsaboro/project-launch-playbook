@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Social Playbook"
+  short_description: "Build launch-ready project-account X playbooks"
+  default_prompt: "Use $project-social-playbook to turn my Solana hackathon project into a 4-week X launch plan."
