@@ -6,12 +6,13 @@
  * with first-class MCP tool invocations Claude Code can call directly.
  *
  * Tools:
- *   fetch_x_posts  — tiered X/Twitter post fetcher (twitterapi.io → RapidAPI → Jina → paste signal)
- *   web_search     — tiered web search (Tavily → Exa → SerpAPI → unavailable)
- *   analyze_voice  — local cadence/topic fingerprint from a post corpus (zero network)
+ *   fetch_x_posts  - tiered X/Twitter post fetcher (twitterapi.io, Xquik, RapidAPI, Jina, paste signal)
+ *   web_search     - tiered web search (Tavily, Exa, SerpAPI, unavailable)
+ *   analyze_voice  - local cadence/topic fingerprint from a post corpus (zero network)
  *
- * Env vars (all optional — same as the scripts/ fallbacks):
+ * Env vars (all optional - same as the scripts/ fallbacks):
  *   TWITTERAPI_IO_KEY   twitterapi.io preferred X source
+ *   XQUIK_API_KEY       Xquik X post fetch source
  *   RAPIDAPI_KEY        RapidAPI twitter-api45 fallback X source
  *   TAVILY_API_KEY      Tavily search preferred
  *   EXA_API_KEY         Exa neural search fallback
@@ -47,13 +48,13 @@ function wrapUntrusted(payload, source) {
   );
 }
 
-// ─── Tool: fetch_x_posts ──────────────────────────────────────────────────────
+// Tool: fetch_x_posts
 
 server.tool(
   "fetch_x_posts",
-  "Fetch recent posts from an X/Twitter handle for project-account grounding. Tries twitterapi.io, RapidAPI, and Jina reader proxy in order; always returns a JSON envelope even when all sources fail.",
+  "Fetch recent posts from an X/Twitter handle for project-account grounding. Tries twitterapi.io, Xquik, RapidAPI, and Jina reader proxy in order; always returns a JSON envelope even when all sources fail.",
   {
-    handle: z.string().describe("X/Twitter handle — with or without leading @"),
+    handle: z.string().describe("X/Twitter handle, with or without leading @"),
     count: z
       .number()
       .int()
@@ -70,10 +71,14 @@ server.tool(
 );
 
 async function fetchXPosts(handle, count) {
-  const { TWITTERAPI_IO_KEY, RAPIDAPI_KEY } = process.env;
+  const { TWITTERAPI_IO_KEY, XQUIK_API_KEY, RAPIDAPI_KEY } = process.env;
 
   if (TWITTERAPI_IO_KEY) {
     const res = await tryTwitterApiIo(handle, count, TWITTERAPI_IO_KEY);
+    if (res.ok) return res;
+  }
+  if (XQUIK_API_KEY) {
+    const res = await tryXquik(handle, count, XQUIK_API_KEY);
     if (res.ok) return res;
   }
   if (RAPIDAPI_KEY) {
@@ -89,7 +94,24 @@ async function fetchXPosts(handle, count) {
     handle,
     count: 0,
     posts: [],
-    note: "No fetch method succeeded. Ask the user to paste 10–20 recent project-account posts for grounding.",
+    note: "No fetch method succeeded. Ask the user to paste 10-20 recent project-account posts for grounding.",
+  };
+}
+
+function mapPost(handle, t) {
+  const id = t.id ?? t.tweetId ?? t.tweet_id ?? null;
+  return {
+    text: t.text ?? t.fullText ?? t.tweet_text ?? "",
+    createdAt: t.createdAt ?? t.created_at ?? t.created ?? null,
+    url: t.url ?? (id ? `https://x.com/${handle}/status/${id}` : null),
+    likeCount: t.likeCount ?? t.favorite_count ?? t.favorites ?? null,
+    retweetCount: t.retweetCount ?? t.retweet_count ?? t.retweets ?? null,
+    replyCount: t.replyCount ?? t.reply_count ?? null,
+    quoteCount: t.quoteCount ?? t.quote_count ?? null,
+    viewCount: t.viewCount ?? t.view_count ?? t.views ?? null,
+    isReply:
+      t.isReply ??
+      (t.inReplyToId != null || t.inReplyToStatusId != null ? true : null),
   };
 }
 
@@ -107,18 +129,41 @@ async function tryTwitterApiIo(handle, count, key) {
       source: "twitterapi.io",
       handle,
       count: tweets.length,
-      posts: tweets.map((t) => ({
-        text: t.text ?? "",
-        createdAt: t.createdAt ?? t.created_at ?? null,
-        url: t.url ?? (t.id ? `https://x.com/${handle}/status/${t.id}` : null),
-        likeCount: t.likeCount ?? t.favorite_count ?? null,
-        retweetCount: t.retweetCount ?? t.retweet_count ?? null,
-        viewCount: t.viewCount ?? null,
-        isReply: t.isReply ?? (t.inReplyToStatusId != null ? true : null),
-      })),
+      posts: tweets.map((t) => mapPost(handle, t)),
     };
   } catch (err) {
     return { ok: false, source: "twitterapi.io", note: `error: ${err.message}` };
+  }
+}
+
+async function tryXquik(handle, count, key) {
+  const url = new URL(
+    `https://xquik.com/api/v1/x/users/${encodeURIComponent(handle)}/tweets`,
+  );
+  url.searchParams.set("includeReplies", "false");
+  try {
+    const r = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "x-api-key": key,
+        "xquik-api-contract": "2026-04-29",
+      },
+    });
+    if (!r.ok) return { ok: false, source: "xquik", note: `HTTP ${r.status}` };
+    const data = await r.json();
+    const tweets = data.tweets ?? data.data?.tweets ?? [];
+    if (!Array.isArray(tweets) || tweets.length === 0)
+      return { ok: false, source: "xquik", note: "empty response" };
+    const take = tweets.slice(0, count);
+    return {
+      ok: true,
+      source: "xquik",
+      handle,
+      count: take.length,
+      posts: take.map((t) => mapPost(handle, t)),
+    };
+  } catch (err) {
+    return { ok: false, source: "xquik", note: `error: ${err.message}` };
   }
 }
 
@@ -141,15 +186,7 @@ async function tryRapidApi(handle, count, key) {
       source: "rapidapi:twitter-api45",
       handle,
       count: Math.min(timeline.length, count),
-      posts: timeline.slice(0, count).map((t) => ({
-        text: t.text ?? t.tweet_text ?? "",
-        createdAt: t.created_at ?? null,
-        url: t.tweet_id ? `https://x.com/${handle}/status/${t.tweet_id}` : null,
-        likeCount: t.favorites ?? null,
-        retweetCount: t.retweets ?? null,
-        viewCount: t.views ?? null,
-        isReply: t.is_reply ?? null,
-      })),
+      posts: timeline.slice(0, count).map((t) => mapPost(handle, t)),
     };
   } catch (err) {
     return { ok: false, source: "rapidapi:twitter-api45", note: `error: ${err.message}` };
@@ -186,7 +223,7 @@ async function tryJinaReader(handle, count) {
       if (candidates.length >= count) break;
     }
     if (candidates.length < 5)
-      return { ok: false, source: "jina-reader", note: "too few real-post candidates — X login wall likely returned" };
+      return { ok: false, source: "jina-reader", note: "too few real-post candidates - X login wall likely returned" };
     return {
       ok: true,
       source: "jina-reader",
@@ -200,11 +237,11 @@ async function tryJinaReader(handle, count) {
   }
 }
 
-// ─── Tool: web_search ─────────────────────────────────────────────────────────
+// Tool: web_search
 
 server.tool(
   "web_search",
-  "Search the web for project background enrichment — project writeups, hackathon pages, docs, launch threads, and community/event context. Tries Tavily, Exa, and SerpAPI in order; always returns a JSON envelope.",
+  "Search the web for project background enrichment - project writeups, hackathon pages, docs, launch threads, and community/event context. Tries Tavily, Exa, and SerpAPI in order; always returns a JSON envelope.",
   {
     query: z.string().describe("Search query, e.g. '\"Velocity\" Solana hackathon launch thread'"),
     max: z
@@ -325,16 +362,16 @@ async function trySerpApi(query, max, key) {
   }
 }
 
-// ─── Tool: analyze_voice ──────────────────────────────────────────────────────
+// Tool: analyze_voice
 
 server.tool(
   "analyze_voice",
-  "Extract a voice-style fingerprint from a corpus of posts. Pure local analysis — zero network calls. Returns sentence length distributions, punctuation rhythm, capitalization tendency, emoji/link/mention density, and top content tokens.",
+  "Extract a voice-style fingerprint from a corpus of posts. Pure local analysis - zero network calls. Returns sentence length distributions, punctuation rhythm, capitalization tendency, emoji/link/mention density, and top content tokens.",
   {
     posts: z
       .array(z.string())
       .min(1)
-      .describe("Array of post texts to analyze — paste or fetched"),
+      .describe("Array of post texts to analyze - paste or fetched"),
   },
   async ({ posts }) => {
     const result = analyzeVoice(posts.map((text) => ({ text })));
@@ -342,7 +379,7 @@ server.tool(
   },
 );
 
-// ─── Voice analysis (ported from scripts/analyze_voice.mjs) ──────────────────
+// Voice analysis (ported from scripts/analyze_voice.mjs)
 
 const STOP_WORDS = new Set(
   "the and for you your our their that this with have has had are was were will would can could should just its it's is a an i me my we us they them not no yes if then than so but or on in at of to do does did be been being also from about into out up down more most very much many few some any one two three there here how what why when where who whom which whose".split(
@@ -387,7 +424,7 @@ function analyzeVoice(posts) {
     punctuation: {
       periods: countMatches(concatenated, /\./g),
       commas: countMatches(concatenated, /,/g),
-      emDashes: countMatches(concatenated, /—/g),
+      emDashes: countMatches(concatenated, /\u2014/g),
       ellipses: countMatches(concatenated, /\.{3,}|…/g),
       exclamations: countMatches(concatenated, /!/g),
       questions: countMatches(concatenated, /\?/g),
@@ -461,7 +498,7 @@ function topContentTokens(words, k) {
     .map(([token, count]) => ({ token, count }));
 }
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// Start
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

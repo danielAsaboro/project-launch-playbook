@@ -1,4 +1,4 @@
-# Scripts — Runtime helpers for the project-social-playbook skill
+# Scripts - Runtime helpers for the project-social-playbook skill
 
 All scripts are Node ESM, zero external dependencies, and degrade gracefully.
 
@@ -39,6 +39,7 @@ All optional.
 | Variable | Used by |
 |---|---|
 | `TWITTERAPI_IO_KEY` | `fetch_x_posts.mjs` |
+| `XQUIK_API_KEY` | `fetch_x_posts.mjs` |
 | `RAPIDAPI_KEY` | `fetch_x_posts.mjs` |
 | `TAVILY_API_KEY` | `web_search.mjs` |
 | `EXA_API_KEY` | `web_search.mjs` |

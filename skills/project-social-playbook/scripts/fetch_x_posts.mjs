@@ -9,11 +9,12 @@
 //
 // Sources tried in order:
 //   1. twitterapi.io        (if TWITTERAPI_IO_KEY set)
-//   2. RapidAPI twitter-api45 (if RAPIDAPI_KEY set)
-//   3. Jina reader proxy    (best-effort, zero key; often partial)
-//   4. paste-mode signal    (always — prompts caller to ask user to paste)
+//   2. Xquik               (if XQUIK_API_KEY set)
+//   3. RapidAPI twitter-api45 (if RAPIDAPI_KEY set)
+//   4. Jina reader proxy    (best-effort, zero key; often partial)
+//   5. paste-mode signal    (always - prompts caller to ask user to paste)
 //
-// Never exits non-zero on missing data — always emits a JSON envelope
+// Never exits non-zero on missing data - always emits a JSON envelope
 // describing what happened so the caller can decide.
 
 const args = process.argv.slice(2);
@@ -27,11 +28,17 @@ const countArg = args.indexOf("--count");
 const count = countArg !== -1 ? parseInt(args[countArg + 1], 10) || 50 : 50;
 
 const TWITTERAPI_IO_KEY = process.env.TWITTERAPI_IO_KEY;
+const XQUIK_API_KEY = process.env.XQUIK_API_KEY;
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 
 async function main() {
   if (TWITTERAPI_IO_KEY) {
     const res = await tryTwitterApiIo(handle, count);
+    if (res.ok) return emit(res);
+  }
+
+  if (XQUIK_API_KEY) {
+    const res = await tryXquik(handle, count);
     if (res.ok) return emit(res);
   }
 
@@ -65,6 +72,23 @@ function emit(res) {
   );
 }
 
+function mapPost(handle, t) {
+  const id = t.id ?? t.tweetId ?? t.tweet_id ?? null;
+  return {
+    text: t.text || t.fullText || t.tweet_text || "",
+    createdAt: t.createdAt || t.created_at || t.created || null,
+    url: t.url || (id ? `https://x.com/${handle}/status/${id}` : null),
+    likeCount: t.likeCount ?? t.favorite_count ?? t.favorites ?? null,
+    retweetCount: t.retweetCount ?? t.retweet_count ?? t.retweets ?? null,
+    replyCount: t.replyCount ?? t.reply_count ?? null,
+    quoteCount: t.quoteCount ?? t.quote_count ?? null,
+    viewCount: t.viewCount ?? t.view_count ?? t.views ?? null,
+    isReply:
+      t.isReply ??
+      (t.inReplyToId != null || t.inReplyToStatusId != null ? true : null),
+  };
+}
+
 async function tryTwitterApiIo(handle, count) {
   const url = `https://api.twitterapi.io/twitter/user/last_tweets?userName=${encodeURIComponent(handle)}&count=${count}`;
   try {
@@ -82,23 +106,47 @@ async function tryTwitterApiIo(handle, count) {
       source: "twitterapi.io",
       handle,
       count: tweets.length,
-      posts: tweets.map((t) => ({
-        text: t.text || "",
-        createdAt: t.createdAt || t.created_at || null,
-        url: t.url || (t.id ? `https://x.com/${handle}/status/${t.id}` : null),
-        likeCount: t.likeCount ?? t.favorite_count ?? null,
-        retweetCount: t.retweetCount ?? t.retweet_count ?? null,
-        viewCount: t.viewCount ?? null,
-        isReply: t.isReply ?? !!t.inReplyToStatusId ?? null,
-      })),
+      posts: tweets.map((t) => mapPost(handle, t)),
     };
   } catch (err) {
     return { ok: false, source: "twitterapi.io", note: `error: ${err.message}` };
   }
 }
 
+async function tryXquik(handle, count) {
+  const url = new URL(
+    `https://xquik.com/api/v1/x/users/${encodeURIComponent(handle)}/tweets`,
+  );
+  url.searchParams.set("includeReplies", "false");
+  try {
+    const r = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "x-api-key": XQUIK_API_KEY,
+        "xquik-api-contract": "2026-04-29",
+      },
+    });
+    if (!r.ok) return { ok: false, source: "xquik", note: `HTTP ${r.status}` };
+    const data = await r.json();
+    const tweets = data.tweets || data.data?.tweets || [];
+    if (!Array.isArray(tweets) || tweets.length === 0) {
+      return { ok: false, source: "xquik", note: "empty response" };
+    }
+    const take = tweets.slice(0, count);
+    return {
+      ok: true,
+      source: "xquik",
+      handle,
+      count: take.length,
+      posts: take.map((t) => mapPost(handle, t)),
+    };
+  } catch (err) {
+    return { ok: false, source: "xquik", note: `error: ${err.message}` };
+  }
+}
+
 async function tryRapidApi(handle, count) {
-  // twitter-api45 — common RapidAPI provider; endpoint shape subject to drift.
+  // twitter-api45 - common RapidAPI provider; endpoint shape subject to drift.
   const url = `https://twitter-api45.p.rapidapi.com/timeline.php?screenname=${encodeURIComponent(handle)}`;
   try {
     const r = await fetch(url, {
@@ -119,15 +167,7 @@ async function tryRapidApi(handle, count) {
       source: "rapidapi:twitter-api45",
       handle,
       count: take.length,
-      posts: take.map((t) => ({
-        text: t.text || t.tweet_text || "",
-        createdAt: t.created_at || null,
-        url: t.tweet_id ? `https://x.com/${handle}/status/${t.tweet_id}` : null,
-        likeCount: t.favorites ?? null,
-        retweetCount: t.retweets ?? null,
-        viewCount: t.views ?? null,
-        isReply: t.is_reply ?? null,
-      })),
+      posts: take.map((t) => mapPost(handle, t)),
     };
   } catch (err) {
     return { ok: false, source: "rapidapi:twitter-api45", note: `error: ${err.message}` };
@@ -166,7 +206,7 @@ async function tryJinaReader(handle, count) {
       if (candidates.length >= count) break;
     }
     if (candidates.length < 5) {
-      return { ok: false, source: "jina-reader", note: "too few real-post candidates — X login wall likely returned" };
+      return { ok: false, source: "jina-reader", note: "too few real-post candidates - X login wall likely returned" };
     }
     return {
       ok: true,
@@ -184,7 +224,7 @@ async function tryJinaReader(handle, count) {
 function printUsage() {
   process.stderr.write(
     "Usage: node fetch_x_posts.mjs <handle> [--count N]\n" +
-      "Env: TWITTERAPI_IO_KEY (preferred), RAPIDAPI_KEY (fallback)\n" +
+      "Env: TWITTERAPI_IO_KEY, XQUIK_API_KEY, RAPIDAPI_KEY\n" +
       "If no key is set, falls back to Jina reader proxy, then paste-mode signal.\n",
   );
 }

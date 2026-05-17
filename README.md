@@ -72,6 +72,7 @@ All optional.
 | Variable | What it does |
 |---|---|
 | `TWITTERAPI_IO_KEY` | Fetch recent posts from a project X handle |
+| `XQUIK_API_KEY` | Fallback X post fetcher |
 | `RAPIDAPI_KEY` | Fallback X post fetcher |
 | `TAVILY_API_KEY` | Web search for project/context enrichment |
 | `EXA_API_KEY` | Web search fallback |
